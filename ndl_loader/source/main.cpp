@@ -49,7 +49,28 @@ extern "C" void (*_ndl_runtime_resolver1_(int *got,  ndl_header *header, int fun
 	return (void (*)())func_ptr;
 }
 
-char *imageBytes;
+char *load_plugin(char *filename )
+{
+	FILE *ndl_image = fopen(filename, "r" );
+	if(ndl_image == NULL )
+		return NULL;
+	else
+	{
+		size_t ndl_sz; fseek(ndl_image, 0, SEEK_END ); ndl_sz = ftell(ndl_image); fseek(ndl_image, 0, SEEK_SET );
+		char *imageBytes = (char *)malloc(ndl_sz);
+		fread(imageBytes, 1, ndl_sz, ndl_image );
+		ndl_header *imageHeader = (ndl_header *)imageBytes;
+		char *imageContent = imageBytes+sizeof(ndl_header);
+		*(void **)(imageContent+imageHeader->got_offset) = (void *)imageHeader;
+		*(void **)(imageContent+imageHeader->got_offset+8) = (void *)_ndl_runtime_resolver0_;
+		for(uint32_t i=0xc; i < imageHeader->got_size; i+=0x4 )
+		{ *(void **)(imageContent+imageHeader->got_offset+i) = (void *)(imageContent+imageHeader->plt_offset); }
+		return imageBytes;
+	}
+}
+
+void call_plug_main(char *imageBytes)
+{ ((void (*)())(imageBytes+sizeof(ndl_header)))(); }
 
 int main(void)
 {
@@ -57,22 +78,12 @@ int main(void)
 	consoleDemoInit();
 	//nitroFSInit(NULL);
 	fatInitDefault();
-	FILE *ndl_image = fopen("/plugin.ndl", "r" );
-	if(ndl_image == NULL)
+	char *imageBytes = load_plugin("hello_plugin.ndl");
+	if(imageBytes == NULL)
 	{
 		printf("could not open plugin!!!\n");
 		while(1);
-	}
-	size_t ndl_sz; fseek(ndl_image, 0, SEEK_END ); ndl_sz = ftell(ndl_image); fseek(ndl_image, 0, SEEK_SET );
-	imageBytes = (char *)malloc(ndl_sz);
-	fread(imageBytes, 1, ndl_sz, ndl_image );
-	ndl_header *imageHeader = (ndl_header *)imageBytes;
-	char *imageContent = imageBytes+sizeof(ndl_header);
-	*(void **)(imageContent+imageHeader->got_offset) = (void *)imageHeader;
-	*(void **)(imageContent+imageHeader->got_offset+8) = (void *)_ndl_runtime_resolver0_;
-	for(int i=0xc; i < imageHeader->got_size; i+=0x4 )
-	{ *(void **)(imageContent+imageHeader->got_offset+i) = (void *)(imageContent+imageHeader->plt_offset); }
-
+	}	
 	while(1)
 	{
 		swiWaitForVBlank();
@@ -80,7 +91,7 @@ int main(void)
 		int pressed = keysDown();
 		if(pressed & KEY_START)
 		{
-			((void (*)())(imageHeader+1))();
+			call_plug_main(imageBytes);
 		}
 	}
 
