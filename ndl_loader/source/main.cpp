@@ -32,23 +32,6 @@ typedef struct ndl_header
 } ndl_header;
 
 
-#define plink_pair(x) {#x, (void (*)())x }
-
-std::unordered_map<std::string, void (*)() > plink_map
-{ plink_pair(puts) };
-
-extern "C" void (*_ndl_runtime_resolver1_(int *got,  ndl_header *header, int func_id ))()
-{
-	char *imageContent = (char *)(header+1);
-	int sym_idx = (((Elf32_Rel *)(imageContent+header->rel_plt_offset))[func_id].r_info >> 8);
-	int name_idx = ((Elf32_Sym *)(imageContent+header->dynsym_offset))[sym_idx].st_name;
-	int patch_r_offset = (((Elf32_Rel *)(imageContent+header->rel_plt_offset))[func_id].r_offset);
-	std::string func_name(imageContent+header->dynstr_offset+name_idx);
-	void (*func_ptr)() = plink_map[func_name];
-	*((void (**)())(imageContent+patch_r_offset)) = (void (*)())func_ptr;
-	return (void (*)())func_ptr;
-}
-
 char *load_plugin(char *filename )
 {
 	FILE *ndl_image = fopen(filename, "r" );
@@ -72,19 +55,64 @@ char *load_plugin(char *filename )
 void call_plug_main(char *imageBytes)
 { ((void (*)())(imageBytes+sizeof(ndl_header)))(); }
 
+u16 *getGfxAddr()
+{ return (u16 *)0x06208000; }
+
+#define plinkp(x) {#x, (void (*)())x }
+
+std::unordered_map<std::string, void (*)() > plink_map
+{ plinkp(puts), plinkp(printf), plinkp(scanf), plinkp(getGfxAddr), plinkp(malloc), plinkp(free), plinkp(scanKeys), plinkp(keysDown) };
+
+extern "C" void (*_ndl_runtime_resolver1_(int *got,  ndl_header *header, int func_id ))()
+{
+	char *imageContent = (char *)(header+1);
+	int sym_idx = (((Elf32_Rel *)(imageContent+header->rel_plt_offset))[func_id].r_info >> 8);
+	int name_idx = ((Elf32_Sym *)(imageContent+header->dynsym_offset))[sym_idx].st_name;
+	int patch_r_offset = (((Elf32_Rel *)(imageContent+header->rel_plt_offset))[func_id].r_offset);
+	std::string func_name(imageContent+header->dynstr_offset+name_idx);
+	void (*func_ptr)() = plink_map[func_name];
+	*((void (**)())(imageContent+patch_r_offset)) = (void (*)())func_ptr;
+	return (void (*)())func_ptr;
+}
+
+
+void OnKeyPressed(int key) {
+   if(key > 0)
+      iprintf("%c", key);
+}
+
 int main(void)
 {
 
-	consoleDemoInit();
-	//nitroFSInit(NULL);
+	//https://mtheall.com/vram.html#SUB=1&T2=8&MB2=14&TB2=0&T3=6&MB3=2&S3=1
+	Keyboard kb2;
+	videoSetModeSub(MODE_3_2D);
+	keyboardInit(&kb2, 2, BgType_Text4bpp, BgSize_T_256x512, 14, 0, false, true );
+	kb2.OnKeyPressed = OnKeyPressed;
+
+	bgInitSub(3, BgType_Bmp16, BgSize_B16_256x256, 2, 0 );
+	/*for (u16* i = (u16*) 0x06208000; i < (u16*) (0x06208000 + 256 * 192 * 2); i++)
+	{
+    		*i = (u16) 0xffff; //(u16) 0x801f; // 1000 0000 0001 1111
+	}*/
+	
+	PrintConsole topScreen;
+	videoSetMode(MODE_0_2D);
+	consoleInit(&topScreen, 3,BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
+	consoleSelect(&topScreen);
+
 	fatInitDefault();
-	char *imageBytes = load_plugin("hello_plugin.ndl");
+
+	char *imageBytes = load_plugin("nightshell/main.ndl");
 	if(imageBytes == NULL)
 	{
-		printf("could not open plugin!!!\n");
+		printf("could not open main plugin!!!\n");
 		while(1);
-	}	
-	while(1)
+	}
+	call_plug_main(imageBytes);
+
+	return 0;
+	/*while(1)
 	{
 		swiWaitForVBlank();
 		scanKeys();
@@ -93,6 +121,6 @@ int main(void)
 		{
 			call_plug_main(imageBytes);
 		}
-	}
+	}*/
 
 }
