@@ -1,12 +1,18 @@
-all: lib/libcplug.so lib/plug_entry.o bin/elf2ndl bin/arm_parse_reloc bin/arm_parse_sym
+all: lib/libcplug.so lib/plug_entry.o bin/gen_so_map bin/elf2ndl bin/arm_parse_reloc bin/arm_parse_sym
 
 #dummy library to link to
-lib/libcplug.so: src/libcplug.c include/libcplug.h
-	arm-none-eabi-gcc -mthumb -nostdlib -shared src/libcplug.c -o lib/libcplug.so
+lib/libcplug.so: bin/gen_so_map src/libcplug.c
+	#arm-none-eabi-gcc -mthumb -nostdlib -shared src/libcplug.c -o lib/libcplug.so
+	./bin/gen_so_map
+	#mv build/libcplug.so lib/libcplug.so
 
 #this contains the plugin startup/initialization assembly code
 lib/plug_entry.o: src/plug_entry.s
 	arm-none-eabi-as src/plug_entry.s -c -o lib/plug_entry.o
+
+#gen_so_map creates both the dummy library and the header containing the ndl_loader hashmap
+bin/gen_so_map: src/gen_so_map.c
+	gcc src/gen_so_map.c -g -o bin/gen_so_map
 
 #elf2ndl opens the plugin compiled to an elf, reads the data from it and outputs a plugin in the .ndl format
 bin/elf2ndl: src/elf2ndl.c
