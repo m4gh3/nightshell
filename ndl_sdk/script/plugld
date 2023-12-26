@@ -6,5 +6,5 @@ BASEPATH=$(dirname $(readlink -f $0))/..
 #arm-none-eabi-gcc -mthumb -fPIC $1.c -c -o $1.o
 #arm-none-eabi-as lib/plug_entry.s -c -o lib/plug_entry.o
 #arm-none-eabi-ld -pie -nostdlib -T $BASEPATH/plugscript.ld $BASEPATH/lib/plug_entry.o -L$BASEPATH/lib -lcplug $@
-arm-none-eabi-ld -pie -T $BASEPATH/plugscript.ld $BASEPATH/lib/plug_entry.o -L$BASEPATH/lib -lcplug $@
+arm-none-eabi-gcc -pie -Wl,-T -Wl,$BASEPATH/plugscript.ld $BASEPATH/lib/plug_entry.o -L$BASEPATH/lib -lcplug $@
 #elf2ndl $1 $1.ndl

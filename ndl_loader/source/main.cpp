@@ -10,6 +10,8 @@
 #include <fat.h>
 #include <unordered_map>
 
+#include "font.h"
+
 extern "C" char _ndl_runtime_resolver0_[];
 
 typedef struct ndl_header
@@ -81,7 +83,29 @@ void call_plug_main(char *imageBytes)
 
 int main(void)
 {
-	consoleDemoInit();
+	//initialize console with custom font
+
+	const int tile_base = 0;
+	const int map_base = 20;
+	
+	videoSetModeSub(MODE_0_2D);	
+	vramSetBankC(VRAM_C_SUB_BG); 
+
+	PrintConsole *console = consoleInit(0,0, BgType_Text4bpp, BgSize_T_256x256, map_base, tile_base, false, false);
+
+	ConsoleFont font;
+
+	font.gfx = (u16*)fontTiles;
+	font.pal = (u16*)fontPal;
+	font.numChars = 95;
+	font.numColors =  fontPalLen / 2;
+	font.bpp = 4;
+	font.asciiOffset = 32;
+	font.convertSingleColor = true;
+	
+	consoleSetFont(console, &font);
+
+
 	#if USE_NITRO_FS
 		nitroFSInit(NULL);
 	#else

@@ -3,4 +3,4 @@
 BASEPATH=$(dirname $(readlink -f $0))/..
 
 #arm-none-eabi-gcc -I$BASEPATH/include -mthumb -fPIC $@
-arm-none-eabi-gcc -I$BASEPATH/include -mthumb -fPIC $@
+arm-none-eabi-gcc -I$BASEPATH/include -I$DEVKITPRO/libnds/include -mthumb -fPIC $@
