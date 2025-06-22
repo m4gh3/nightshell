@@ -79,7 +79,7 @@ char *load_plugin(char *filename )
 void call_plug_main(char *imageBytes)
 { ((void (*)())(imageBytes+sizeof(ndl_header)))(); }
 
-#define USE_NITRO_FS 0
+#define USE_NITRO_FS 1
 
 int main(void)
 {
